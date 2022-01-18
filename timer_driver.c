@@ -283,29 +283,25 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset) 
 {
 	char buff[BUFF_SIZE];
-	int millis = 0;
-	int number = 0;
+
+	int dd = 0;
+	int hh = 0;
+	int mm = 0;
+	int ss = 0;
+
 	int ret = 0;
+
 	ret = copy_from_user(buff, buffer, length);
 	if(ret)
 		return -EFAULT;
 	buff[length] = '\0';
 
-	ret = sscanf(buff,"%d,%d",&number,&millis);
-	if(ret == 2)//two parameters parsed in sscanf
+	ret = sscanf(buff,"%d:%d:%d:%d",&dd,&hh,&mm,&ss);
+	if(ret == 4)//parameters parsed in sscanf
 	{
 
-		if (millis > 40000)
-		{
-			printk(KERN_WARNING "xilaxitimer_write: Maximum period exceeded, enter something less than 40000 \n");
-		}
-		else
-		{
-			printk(KERN_INFO "xilaxitimer_write: Starting timer for %d interrupts. One every %d miliseconds \n",number,millis);
-			i_num = number;
-			setup_and_start_timer(millis);
-		}
-
+		ss = ss + 60*mm + 60*60*hh + 60*60*24*dd;
+		setup_and_start_timer(ss);
 	}
 	else
 	{
