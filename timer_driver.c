@@ -63,7 +63,9 @@ static int i_cnt = 0;
 
 
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
-static void setup_and_start_timer(unsigned int milliseconds);
+static void setup_timer(unsigned int milliseconds);
+static void start_timer(void);
+static void stop_timer(void);
 static int timer_probe(struct platform_device *pdev);
 static int timer_remove(struct platform_device *pdev);
 int timer_open(struct inode *pinode, struct file *pfile);
@@ -132,7 +134,7 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
 //***************************************************
 //HELPER FUNCTION THAT RESETS AND STARTS TIMER WITH PERIOD IN MILISECONDS
 
-static void setup_and_start_timer(unsigned int milliseconds)
+static void setup_timer(unsigned int milliseconds)
 {
 	// Disable Timer Counter
 	unsigned int timer_load;
@@ -173,6 +175,17 @@ static void start_timer(void)
 			tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
 }
+
+static void stop_timer(void)
+{
+	unsigned int data = 0;
+	// Disable timer/counter while configuration is in progress
+	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+	iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK),
+			tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+	
+}
+
 //***************************************************
 // PROBE AND REMOVE
 static int timer_probe(struct platform_device *pdev)
@@ -306,7 +319,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 	{
 
 		ss = ss + 60*mm + 60*60*hh + 60*60*24*dd;
-		setup_and_start_timer(ss);
+		setup_timer(ss);
 	}
 	else
 	{
