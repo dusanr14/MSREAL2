@@ -162,12 +162,17 @@ static void setup_and_start_timer(unsigned int milliseconds)
 			tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
 	// Start Timer bz setting enable signal
+
+}
+
+static void start_timer(void)
+{
+	unsigned int data = 0;
 	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 	iowrite32(data | XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK,
 			tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 
 }
-
 //***************************************************
 // PROBE AND REMOVE
 static int timer_probe(struct platform_device *pdev)
