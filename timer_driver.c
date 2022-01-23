@@ -22,6 +22,9 @@
 #define XIL_AXI_TIMER_TCSR_OFFSET	0x0
 #define XIL_AXI_TIMER_TLR_OFFSET		0x4
 #define XIL_AXI_TIMER_TCR_OFFSET		0x8
+#define XIL_AXI_TIMER_TCSR1_OFFSET	0X10
+#define XIL_AXI_TIMER_TLR1_OFFSET	0X14
+#define XIL_AXI_TIMER_TCR1_OFFSET	0X18
 
 #define XIL_AXI_TIMER_CSR_CASC_MASK	0x00000800
 #define XIL_AXI_TIMER_CSR_ENABLE_ALL_MASK	0x00000400
@@ -56,16 +59,20 @@ dev_t my_dev_id;
 static struct class *my_class;
 static struct device *my_device;
 static struct cdev *my_cdev;
-static struct timer_info *tp = NULL;
+static struct timer_info *tp = NULL; //
 
-static int i_num = 1;
-static int i_cnt = 0;
+//static int i_num = 1;
+//static int i_cnt = 0;
 
+unsigned int flag_start = 0;
+unsigned int flag_stop = 1;
+unsigned int flag_input = 0;
 
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_timer(unsigned int milliseconds);
 static void start_timer(void);
 static void stop_timer(void);
+u64 read_timer_status(void);
 static int timer_probe(struct platform_device *pdev);
 static int timer_remove(struct platform_device *pdev);
 int timer_open(struct inode *pinode, struct file *pfile);
@@ -75,7 +82,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 static int __init timer_init(void);
 static void __exit timer_exit(void);
 
-struct file_operations my_fops =
+struct file_operations my_fops = //
 {
 	.owner = THIS_MODULE,
 	.open = timer_open,
@@ -84,12 +91,12 @@ struct file_operations my_fops =
 	.release = timer_close,
 };
 
-static struct of_device_id timer_of_match[] = {
+static struct of_device_id timer_of_match[] = {  //
 	{ .compatible = "xlnx,xps-timer-1.00.a", },
 	{ /* end of list */ },
 };
 
-static struct platform_driver timer_driver = {
+static struct platform_driver timer_driver = { //
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
@@ -108,26 +115,29 @@ MODULE_DEVICE_TABLE(of, timer_of_match);
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)		
 {      
 	unsigned int data = 0;
+	unsigned int data_h = 0;
 
 	// Check Timer Counter Value
-	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
-	printk(KERN_INFO "xilaxitimer_isr: Interrupt %d occurred !\n",i_cnt);
+	data_h = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR1_OFFSET);
+	//printk(KERN_INFO "xilaxitimer_isr: Interrupt %d occurred !\n",i_cnt);
 
 	// Clear Interrupt
 	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
 	iowrite32(data | XIL_AXI_TIMER_CSR_INT_OCCURED_MASK,
 			tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-
-	// Increment number of interrupts that have occured
-	i_cnt++;
-	// Disable Timer after i_num interrupts
-	if (i_cnt>=i_num)
+	if(data_h != ioread32(tp->base_addr + XIL_AXI_TIMER_TCR1_OFFSET))
 	{
-		printk(KERN_NOTICE "xilaxitimer_isr: All of the interrupts have occurred. Disabling timer\n");
-		data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-		iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
-		i_cnt = 0;
+		data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
 	}
+	
+	flag_start = 0;
+
+	data_h = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+	iowrite32(data_h & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp-> base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
+	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+	iowrite32(data & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp-> base_addr + XIL_AXI_TIMER_TCSR_OFFSET);
+
+	setup_timer(0);
 
 	return IRQ_HANDLED;
 }
