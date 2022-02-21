@@ -141,6 +141,29 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
 
 	return IRQ_HANDLED;
 }
+
+u64 read_timer_status()
+{
+	u64 status = 0;
+	unsigned int data_h = 0;
+	unsigned int data = 0;
+	
+	data_h = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR1_OFFSET);
+	data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
+		//printk(KERN_INFO "data_high=%d", data_high);
+		//printk(KERN_INFO "data_low=%d", data_low);
+	
+	if(data_h != ioread32(tp->base_addr + XIL_AXI_TIMER_TCR1_OFFSET))
+	{
+		data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
+	}
+	status = (u64) data_h;
+	status <<= 32;
+	status += (u64) data;
+	
+	return status;
+}
+
 //***************************************************
 //HELPER FUNCTION THAT RESETS AND STARTS TIMER WITH PERIOD IN MILISECONDS
 
@@ -304,7 +327,33 @@ int timer_close(struct inode *pinode, struct file *pfile)
 ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset) 
 {
 
-	//printk(KERN_INFO "Succesfully read timer\n");
+	u64 status = 0;
+	unsigned int dd = 0;
+	unsigned int hh = 0;
+	unsigned int mm = 0;
+	unsigned int ss = 0;
+	long int len;
+	int ret;
+	char buff[BUFF_SIZE];
+	
+	status = read_timer_status();
+
+	status =div_u64( status, 100000000 );
+	printk(KERN_INFO "%llu", status);
+
+	dd = (unsigned int)status/(60*60*24);
+	hh = (unsigned int)(status-dd*60*60*24)/(60*60);
+	mm = (unsigned int)(status-dd*60*60*24-hh*60*60)/60;
+	ss = (unsigned int) (status-dd*60*60*24-hh*60*60-mm*60);
+	
+	len = scnprintf(buff, BUFF_SIZE, "%u:%u:%u:%u\n", dd, hh,mm,ss);
+	ret = copy_to_user(buffer, buff, len);
+	
+	if(ret)
+		return -EFAULT;
+		
+	printk(KERN_INFO "Remaining time is: %u:%u:%u:%u\n", ds, hh, mm, ss);
+	
 	return 0;
 }
 
