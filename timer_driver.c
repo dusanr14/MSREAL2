@@ -352,7 +352,7 @@ ssize_t timer_read(struct file *pfile, char __user *buffer, size_t length, loff_
 	if(ret)
 		return -EFAULT;
 		
-	printk(KERN_INFO "Remaining time is: %u:%u:%u:%u\n", ds, hh, mm, ss);
+	printk(KERN_INFO "Remaining time is: %u:%u:%u:%u\n", dd, hh, mm, ss);
 	
 	return 0;
 }
@@ -369,22 +369,37 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 	int ret = 0;
 
 	ret = copy_from_user(buff, buffer, length);
+
+
 	if(ret)
 		return -EFAULT;
 	buff[length] = '\0';
 
-	ret = sscanf(buff,"%d:%d:%d:%d",&dd,&hh,&mm,&ss);
-	if(ret == 4)//parameters parsed in sscanf
-	{
 
-		ss = ss + 60*mm + 60*60*hh + 60*60*24*dd;
-		setup_timer(ss);
+	if(strncmp(buff,"start",5) ==0)
+	{
+		start_timer();
+	}
+	else if(strncmp(buff,"stop",4) == 0)
+	{
+		stop_timer();
 	}
 	else
 	{
-		printk(KERN_WARNING "xilaxitimer_write: Wrong format, expected n,t \n\t n-number of interrupts\n\t t-time in ms between interrupts\n");
+		///////
+		ret = sscanf(buff,"%d:%d:%d:%d",&dd,&hh,&mm,&ss);
+		if(ret == 4)//parameters parsed in sscanf
+		{
+			
+			ss = ss + 60*mm + 60*60*hh + 60*60*24*dd;
+			setup_timer(ss);
+		}
+		else
+		{
+			printk(KERN_WARNING "xilaxitimer_write: Wrong format, expected n,t \n\t n-number of interrupts\n\t t-time in ms between interrupts\n");
+		}
+		return length;
 	}
-	return length;
 }
 
 //***************************************************
