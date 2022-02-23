@@ -64,9 +64,9 @@ static struct timer_info *tp = NULL; //
 //static int i_num = 1;
 //static int i_cnt = 0;
 
-unsigned int flag_start = 0;
-unsigned int flag_stop = 1;
-unsigned int flag_input = 0;
+unsigned int bit_start = 0;
+unsigned int bit_stop = 1;
+unsigned int bit_input = 0;
 
 static irqreturn_t xilaxitimer_isr(int irq,void*dev_id);
 static void setup_timer(unsigned int milliseconds);
@@ -130,7 +130,7 @@ static irqreturn_t xilaxitimer_isr(int irq,void*dev_id)
 		data = ioread32(tp->base_addr + XIL_AXI_TIMER_TCR_OFFSET);
 	}
 	
-	flag_start = 0;
+	bit_start = 0;
 
 	data_h = ioread32(tp->base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
 	iowrite32(data_h & ~(XIL_AXI_TIMER_CSR_ENABLE_TMR_MASK), tp-> base_addr + XIL_AXI_TIMER_TCSR1_OFFSET);
@@ -365,7 +365,8 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 	int hh = 0;
 	int mm = 0;
 	int ss = 0;
-
+	
+	u64 time = 0;
 	int ret = 0;
 
 	ret = copy_from_user(buff, buffer, length);
@@ -378,11 +379,22 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 
 	if(strncmp(buff,"start",5) ==0)
 	{
+		if((bit_start == 0) && (bit_input == 1) )
+		{
+		bit_start = 1;
+		bit_stop = 0;
 		start_timer();
+		}
 	}
 	else if(strncmp(buff,"stop",4) == 0)
 	{
+		if(bit_stop ==0)
+		{
+		bit_stop = 1;
+		bit_start = 0;
+
 		stop_timer();
+		}
 	}
 	else
 	{
@@ -390,9 +402,12 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 		ret = sscanf(buff,"%d:%d:%d:%d",&dd,&hh,&mm,&ss);
 		if(ret == 4)//parameters parsed in sscanf
 		{
-			
-			ss = ss + 60*mm + 60*60*hh + 60*60*24*dd;
-			setup_timer(ss);
+			if(bit_start == 0)
+			{	
+			bit_input = 1;
+			time = ss + 60*mm + 60*60*hh + 60*60*24*dd;
+			setup_timer(time);
+			}
 		}
 		else
 		{
