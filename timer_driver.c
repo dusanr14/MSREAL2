@@ -405,7 +405,7 @@ ssize_t timer_write(struct file *pfile, const char __user *buffer, size_t length
 			if(bit_start == 0)
 			{	
 			bit_input = 1;
-			time = ss + 60*mm + 60*60*hh + 60*60*24*dd;
+			time =(u64)(ss + 60*mm + 60*60*hh + 60*60*24*dd);
 			setup_timer(time);
 			}
 		}
